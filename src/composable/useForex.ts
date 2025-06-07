@@ -8,6 +8,7 @@ export function useForex() {
   const forexStore = useForexStore();
   const isConnecting = ref(false);
   const connectionError = ref<string | null>(null);
+  const isComponentMounted = ref(false);
 
   const connect = async (): Promise<void> => {
     if (isConnecting.value || forexStore.isConnected) {
@@ -19,6 +20,9 @@ export function useForex() {
       connectionError.value = null;
 
       await forexService.connectToForexFeed((trades: ForexTrade[]) => {
+        if (!isComponentMounted.value) {
+          return;
+        }
         forexStore.updateTrades(trades);
       });
 
@@ -28,7 +32,6 @@ export function useForex() {
         error instanceof Error ? error.message : "Connection failed";
       connectionError.value = errorMessage;
       forexStore.setConnectionState(false, errorMessage);
-      console.error("Failed to connect to forex feed:", error);
     } finally {
       isConnecting.value = false;
     }
@@ -38,9 +41,8 @@ export function useForex() {
     try {
       forexService.disconnect();
       forexStore.setConnectionState(false);
-    } catch (error) {
-      console.error("Error disconnecting forex feed:", error);
-    }
+      isComponentMounted.value = false;
+    } catch (error) {}
   };
 
   const checkConnection = (): boolean => {
@@ -50,10 +52,12 @@ export function useForex() {
   };
 
   onMounted(() => {
+    isComponentMounted.value = true;
     connect();
   });
 
   onUnmounted(() => {
+    isComponentMounted.value = false;
     disconnect();
   });
 
@@ -61,6 +65,7 @@ export function useForex() {
     isConnecting,
     isConnected: computed(() => forexStore.isConnected),
     connectionError,
+    isComponentMounted: computed(() => isComponentMounted.value),
 
     connect,
     disconnect,

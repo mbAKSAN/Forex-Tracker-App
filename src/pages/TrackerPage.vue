@@ -12,18 +12,33 @@
     </div>
 
     <div class="table-section">
+      <div v-if="isLoading" class="loading-overlay">
+        <div class="loading-spinner">
+          <i class="pi pi-spin pi-spinner"></i>
+        </div>
+        <div class="loading-text">Loading forex pairs...</div>
+      </div>
+
       <DataTable
         v-model:selection="selectedPairsData"
         :value="pairsData"
         dataKey="pair"
         class="datatable-custom"
+        :class="{ 'loading-state': isLoading }"
         responsiveLayout="scroll"
+        @selection-change="onSelectionChange"
       >
         <Column selectionMode="multiple" headerStyle="width: 3rem" />
 
         <Column field="pair" header="Pair" sortable style="min-width: 8rem" />
 
-        <Column field="price" header="Price" sortable style="min-width: 6rem" class="header-style">
+        <Column
+          field="price"
+          header="Price"
+          sortable
+          style="min-width: 6rem"
+          class="header-style"
+        >
           <template #body="{ data }">
             {{ data.price.toFixed(5) }}
           </template>
@@ -84,10 +99,12 @@
             :min="0"
             :step="0.01"
             locale="en-US"
-            decimalSeparator="."
+            :minFractionDigits="0"
+            :maxFractionDigits="5"
             :useGrouping="false"
             placeholder="0.00"
             class="dialog-input"
+            inputStyle="text-align: right;"
           />
         </div>
       </div>
@@ -113,7 +130,14 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, watch } from "vue";
+import {
+  ref,
+  reactive,
+  computed,
+  watch,
+  onBeforeUnmount,
+  onUnmounted,
+} from "vue";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import Button from "primevue/button";
@@ -121,7 +145,6 @@ import Dialog from "primevue/dialog";
 import InputNumber from "primevue/inputnumber";
 import { useForex } from "@/composable/useForex";
 import { useForexStore } from "@/stores/forexStore";
-import { onBeforeUnmount } from 'vue';
 
 interface PairData {
   pair: string;
@@ -132,29 +155,39 @@ interface PairData {
   lastUpdate: string;
 }
 
-const { tradeList, addToPortfolio, formatSymbol } = useForex();
+const { tradeList, addToPortfolio, formatSymbol, disconnect } = useForex();
 const forexStore = useForexStore();
 
 const pairsData = ref<PairData[]>([]);
 const selectedPairsData = ref<PairData[]>([]);
 const showBuyDialog = ref(false);
 const volumes = reactive<Record<string, number>>({});
+const isLoading = ref(true);
 
 const selectedPairs = computed(() => selectedPairsData.value);
-const { disconnect } = useForex();
 
-watch(
+const stopWatching = watch(
   tradeList,
   (newTrades) => {
+    if (isLoading.value && newTrades.length > 0) {
+      isLoading.value = false;
+    }
+
     newTrades.forEach((trade) => {
       const symbol = formatSymbol(trade.s);
       const price = trade.p;
       const volume = trade.v;
       const time = new Date(trade.t);
-      const lastUpdate = `${time.getHours().toString().padStart(2, "0")}:${time
-        .getMinutes()
+      const hours = time.getHours();
+      const minutes = time.getMinutes();
+      const seconds = time.getSeconds();
+
+      const hours12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+      const ampm = hours >= 12 ? "PM" : "AM";
+
+      const lastUpdate = `${hours12.toString().padStart(2, "0")}:${minutes
         .toString()
-        .padStart(2, "0")}:${time.getSeconds().toString().padStart(2, "0")}`;
+        .padStart(2, "0")}:${seconds.toString().padStart(2, "0")} ${ampm}`;
 
       const existing = pairsData.value.find((p) => p.pair === symbol);
       if (existing) {
@@ -183,6 +216,7 @@ watch(
 interface SelectionChangeEvent {
   value: PairData[];
 }
+
 const onSelectionChange = (event: SelectionChangeEvent) => {
   selectedPairsData.value = event.value;
   forexStore.clearSelection();
@@ -214,8 +248,25 @@ const onConfirmBuy = async () => {
   Object.keys(volumes).forEach((key) => delete volumes[key]);
 };
 
-onBeforeUnmount(() => {
+const cleanup = () => {
+  if (stopWatching) {
+    stopWatching();
+  }
+
   disconnect();
+
+  forexStore.clearSelection();
+  pairsData.value = [];
+  selectedPairsData.value = [];
+  Object.keys(volumes).forEach((key) => delete volumes[key]);
+};
+
+onBeforeUnmount(() => {
+  cleanup();
+});
+
+onUnmounted(() => {
+  cleanup();
 });
 </script>
 
@@ -260,6 +311,35 @@ onBeforeUnmount(() => {
 
 .table-section {
   padding: 0 16px 16px 16px;
+  position: relative;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(2px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  border-radius: 4px;
+}
+
+.loading-spinner {
+  font-size: 2rem;
+  color: #447edb;
+  margin-bottom: 16px;
+}
+
+.loading-text {
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 .datatable-custom {
@@ -268,6 +348,12 @@ onBeforeUnmount(() => {
   border-radius: 4px;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: opacity 0.3s ease;
+}
+
+.datatable-custom.loading-state {
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 :deep(.datatable-custom .p-datatable-thead > tr > th.p-sortable) {
@@ -388,6 +474,7 @@ onBeforeUnmount(() => {
   background-color: #94d3a2 !important;
   cursor: not-allowed !important;
 }
+
 :deep(.datatable-custom .p-datatable-tbody > tr:hover) {
   background-color: #f3f4f6 !important;
   cursor: pointer;
@@ -396,16 +483,18 @@ onBeforeUnmount(() => {
 :deep(.datatable-custom .p-datatable-tbody > tr.p-highlight:hover) {
   background-color: #e0e7ff !important;
 }
-:deep(.p-datatable-column-sorted){
-background-color: #0f8dda1a !important;
-color: #1f76df !important;
-}
-:deep(.p-datatable-column-sorted .p-datatable-sort-icon){
+
+:deep(.p-datatable-column-sorted) {
+  background-color: #0f8dda1a !important;
   color: #1f76df !important;
 }
-:deep(.p-checkbox-checked .p-checkbox-box){
+
+:deep(.p-datatable-column-sorted .p-datatable-sort-icon) {
+  color: #1f76df !important;
+}
+
+:deep(.p-checkbox-checked .p-checkbox-box) {
   border-color: #358fd9 !important;
   background-color: #358fd9 !important;
 }
-
 </style>

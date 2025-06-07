@@ -1,13 +1,13 @@
-<!-- src/App.vue -->
 <template>
   <MainLayout />
 </template>
 
 <script lang="ts" setup>
-import MainLayout from '@/components/templates/MainLayout.vue'
+import MainLayout from "@/components/templates/MainLayout.vue";
 </script>
 <style>
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -18,4 +18,3 @@ html, body {
   width: 100%;
 }
 </style>
-

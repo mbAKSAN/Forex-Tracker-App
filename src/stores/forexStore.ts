@@ -1,13 +1,13 @@
-import { defineStore } from 'pinia';
+import { defineStore } from "pinia";
 
 export interface ForexTrade {
-  c: string[] | null; 
-  p: number;          
-  s: string;          
-  t: number;         
-  v: number;          
-  change?: number;    
-  direction?: 'up' | 'down' | 'none'; 
+  c: string[] | null;
+  p: number;
+  s: string;
+  t: number;
+  v: number;
+  change?: number;
+  direction?: "up" | "down" | "none";
 }
 
 export interface PortfolioAsset {
@@ -33,7 +33,7 @@ interface ForexStoreState {
   connectionError: string | null;
 }
 
-export const useForexStore = defineStore('forex', {
+export const useForexStore = defineStore("forex", {
   state: (): ForexStoreState => ({
     lastTrades: {},
     previousPrices: {},
@@ -45,59 +45,62 @@ export const useForexStore = defineStore('forex', {
 
   getters: {
     tradeList: (state): ForexTrade[] => {
-      return Object.values(state.lastTrades)
-        .sort((a, b) => b.t - a.t); 
+      return Object.values(state.lastTrades).sort((a, b) => b.t - a.t);
     },
 
     selectedTradeList: (state): ForexTrade[] => {
       return state.selectedPairs
-        .map(symbol => state.lastTrades[symbol])
+        .map((symbol) => state.lastTrades[symbol])
         .filter((trade): trade is ForexTrade => Boolean(trade))
         .sort((a, b) => b.t - a.t);
     },
 
     portfolioWithCurrentPrices: (state): PortfolioAsset[] => {
-      return state.portfolio.map(asset => {
+      return state.portfolio.map((asset) => {
         const currentTrade = state.lastTrades[asset.symbol];
         const currentPrice = currentTrade?.p || asset.purchasePrice;
         const totalValue = currentPrice * asset.volume;
-        const profitLoss = totalValue - (asset.purchasePrice * asset.volume);
-        const profitLossPercentage = ((currentPrice - asset.purchasePrice) / asset.purchasePrice) * 100;
+        const profitLoss = totalValue - asset.purchasePrice * asset.volume;
+        const profitLossPercentage =
+          ((currentPrice - asset.purchasePrice) / asset.purchasePrice) * 100;
 
         return {
           ...asset,
           currentPrice,
           totalValue,
           profitLoss,
-          profitLossPercentage: Number(profitLossPercentage.toFixed(3))
+          profitLossPercentage: Number(profitLossPercentage.toFixed(3)),
         };
       });
     },
 
     totalPortfolioValue: (state): number => {
       return state.portfolio.reduce((total, asset) => {
-        const currentPrice = state.lastTrades[asset.symbol]?.p || asset.purchasePrice;
-        return total + (currentPrice * asset.volume);
+        const currentPrice =
+          state.lastTrades[asset.symbol]?.p || asset.purchasePrice;
+        return total + currentPrice * asset.volume;
       }, 0);
     },
 
-    formatSymbol: () => (symbol: string): string => {
-      return symbol.replace('OANDA:', '').replace('_', '/');
-    }
+    formatSymbol:
+      () =>
+      (symbol: string): string => {
+        return symbol.replace("OANDA:", "").replace("_", "/");
+      },
   },
 
   actions: {
     updateTrades(trades: ForexTrade[]): void {
-      trades.forEach(trade => {
+      trades.forEach((trade) => {
         const prev = this.lastTrades[trade.s]?.p;
         let change: number | undefined;
-        let direction: 'up' | 'down' | 'none' = 'none';
+        let direction: "up" | "down" | "none" = "none";
 
-        if (typeof prev === 'number') {
+        if (typeof prev === "number") {
           change = prev !== 0 ? ((trade.p - prev) / prev) * 100 : 0;
-          if (change > 0) direction = 'up';
-          else if (change < 0) direction = 'down';
-          else direction = 'none';
+          if (change > 0) direction = "up";
+          else if (change < 0) direction = "down";
+          else direction = "none";
         }
 
         this.lastTrades[trade.s] = {
@@ -130,36 +133,41 @@ export const useForexStore = defineStore('forex', {
     addToPortfolio(symbol: string, volume: number): void {
       const currentTrade = this.lastTrades[symbol];
       if (!currentTrade) {
-        throw new Error('Current price not available for this pair');
+        throw new Error("Current price not available for this pair");
       }
 
-      const existingAssetIndex = this.portfolio.findIndex(asset => asset.symbol === symbol);
-      
+      const existingAssetIndex = this.portfolio.findIndex(
+        (asset) => asset.symbol === symbol
+      );
+
       if (existingAssetIndex > -1) {
         const existingAsset = this.portfolio[existingAssetIndex];
         const totalVolume = existingAsset.volume + volume;
-        const totalCost = (existingAsset.purchasePrice * existingAsset.volume) + (currentTrade.p * volume);
+        const totalCost =
+          existingAsset.purchasePrice * existingAsset.volume +
+          currentTrade.p * volume;
         const averagePrice = totalCost / totalVolume;
 
         this.portfolio[existingAssetIndex] = {
           ...existingAsset,
           volume: totalVolume,
-          purchasePrice: averagePrice
+          purchasePrice: averagePrice,
         };
       } else {
         const newAsset: PortfolioAsset = {
-          id: Date.now().toString() + Math.random().toString(36).substring(2, 11),
+          id:
+            Date.now().toString() + Math.random().toString(36).substring(2, 11),
           symbol,
           purchasePrice: currentTrade.p,
           volume,
-          purchaseDate: new Date()
+          purchaseDate: new Date(),
         };
         this.portfolio.push(newAsset);
       }
     },
 
     removeFromPortfolio(assetId: string): void {
-      const index = this.portfolio.findIndex(asset => asset.id === assetId);
+      const index = this.portfolio.findIndex((asset) => asset.id === assetId);
       if (index > -1) {
         this.portfolio.splice(index, 1);
       }
@@ -167,28 +175,42 @@ export const useForexStore = defineStore('forex', {
 
     exportPortfolioToCSV(): void {
       const portfolioData = this.portfolioWithCurrentPrices;
-      const headers = ['Pair', 'Purchase Price', 'Current Price', 'Volume', 'Total Value', 'Profit/Loss', 'Profit/Loss %', 'Purchase Date'];
-      
-      const csvContent = [
-        headers.join(','),
-        ...portfolioData.map(asset => [
-          this.formatSymbol(asset.symbol),
-          asset.purchasePrice.toFixed(5),
-          asset.currentPrice?.toFixed(5) || 'N/A',
-          asset.volume.toString(),
-          asset.totalValue?.toFixed(2) || 'N/A',
-          asset.profitLoss?.toFixed(2) || 'N/A',
-          (asset.profitLossPercentage?.toFixed(3) || 'N/A') + '%',
-          asset.purchaseDate.toLocaleDateString()
-        ].join(','))
-      ].join('\n');
+      const headers = [
+        "Pair",
+        "Purchase Price",
+        "Current Price",
+        "Volume",
+        "Total Value",
+        "Profit/Loss",
+        "Profit/Loss %",
+        "Purchase Date",
+      ];
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
+      const csvContent = [
+        headers.join(","),
+        ...portfolioData.map((asset) =>
+          [
+            this.formatSymbol(asset.symbol),
+            asset.purchasePrice.toFixed(5),
+            asset.currentPrice?.toFixed(5) || "N/A",
+            asset.volume.toString(),
+            asset.totalValue?.toFixed(2) || "N/A",
+            asset.profitLoss?.toFixed(2) || "N/A",
+            (asset.profitLossPercentage?.toFixed(3) || "N/A") + "%",
+            asset.purchaseDate.toLocaleDateString(),
+          ].join(",")
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `forex_portfolio_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `forex_portfolio_${new Date().toISOString().split("T")[0]}.csv`
+      );
+      link.style.visibility = "hidden";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -214,25 +236,21 @@ export const useForexStore = defineStore('forex', {
 
     savePortfolioToLocalStorage(): void {
       try {
-        localStorage.setItem('forex-portfolio', JSON.stringify(this.portfolio));
-      } catch (error) {
-        console.error('Failed to save portfolio to localStorage:', error);
-      }
+        localStorage.setItem("forex-portfolio", JSON.stringify(this.portfolio));
+      } catch (error) {}
     },
 
     loadPortfolioFromLocalStorage(): void {
       try {
-        const savedPortfolio = localStorage.getItem('forex-portfolio');
+        const savedPortfolio = localStorage.getItem("forex-portfolio");
         if (savedPortfolio) {
           const parsed = JSON.parse(savedPortfolio);
           this.portfolio = parsed.map((asset: any) => ({
             ...asset,
-            purchaseDate: new Date(asset.purchaseDate)
+            purchaseDate: new Date(asset.purchaseDate),
           }));
         }
-      } catch (error) {
-        console.error('Failed to load portfolio from localStorage:', error);
-      }
-    }
-  }
+      } catch (error) {}
+    },
+  },
 });
