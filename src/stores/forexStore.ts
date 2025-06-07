@@ -225,9 +225,4 @@ export const useForexStore = defineStore('forex', {
   },
 
  
-  persist: {
-    key: 'forex-portfolio',
-    storage: localStorage,
-    paths: ['portfolio'] 
-  }
 });
