@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 
-
 export interface ForexTrade {
   c: string[] | null; 
   p: number;          
@@ -10,7 +9,6 @@ export interface ForexTrade {
   change?: number;    
   direction?: 'up' | 'down' | 'none'; 
 }
-
 
 export interface PortfolioAsset {
   id: string;
@@ -26,36 +24,39 @@ export interface PortfolioAsset {
 
 type ForexTradeMap = Record<string, ForexTrade>;
 
+interface ForexStoreState {
+  lastTrades: ForexTradeMap;
+  previousPrices: Record<string, number>;
+  portfolio: PortfolioAsset[];
+  selectedPairs: string[];
+  isConnected: boolean;
+  connectionError: string | null;
+}
+
 export const useForexStore = defineStore('forex', {
-  state: () => ({
-    lastTrades: {} as ForexTradeMap,
-    previousPrices: {} as Record<string, number>,
-   
-    portfolio: [] as PortfolioAsset[],
-    
-  
-    selectedPairs: [] as string[],
+  state: (): ForexStoreState => ({
+    lastTrades: {},
+    previousPrices: {},
+    portfolio: [],
+    selectedPairs: [],
     isConnected: false,
-    connectionError: null as string | null,
+    connectionError: null,
   }),
 
   getters: {
- 
-    tradeList: (state) => {
+    tradeList: (state): ForexTrade[] => {
       return Object.values(state.lastTrades)
         .sort((a, b) => b.t - a.t); 
     },
 
-  
-    selectedTradeList: (state) => {
+    selectedTradeList: (state): ForexTrade[] => {
       return state.selectedPairs
         .map(symbol => state.lastTrades[symbol])
-        .filter(Boolean)
+        .filter((trade): trade is ForexTrade => Boolean(trade))
         .sort((a, b) => b.t - a.t);
     },
 
-   
-    portfolioWithCurrentPrices: (state) => {
+    portfolioWithCurrentPrices: (state): PortfolioAsset[] => {
       return state.portfolio.map(asset => {
         const currentTrade = state.lastTrades[asset.symbol];
         const currentPrice = currentTrade?.p || asset.purchasePrice;
@@ -73,23 +74,20 @@ export const useForexStore = defineStore('forex', {
       });
     },
 
-   
-    totalPortfolioValue: (state) => {
+    totalPortfolioValue: (state): number => {
       return state.portfolio.reduce((total, asset) => {
         const currentPrice = state.lastTrades[asset.symbol]?.p || asset.purchasePrice;
         return total + (currentPrice * asset.volume);
       }, 0);
     },
 
-   
-    formatSymbol: () => (symbol: string) => {
+    formatSymbol: () => (symbol: string): string => {
       return symbol.replace('OANDA:', '').replace('_', '/');
     }
   },
 
   actions: {
-    
-    updateTrades(trades: ForexTrade[]) {
+    updateTrades(trades: ForexTrade[]): void {
       trades.forEach(trade => {
         const prev = this.lastTrades[trade.s]?.p;
         let change: number | undefined;
@@ -112,8 +110,7 @@ export const useForexStore = defineStore('forex', {
       });
     },
 
-   
-    togglePairSelection(symbol: string) {
+    togglePairSelection(symbol: string): void {
       const index = this.selectedPairs.indexOf(symbol);
       if (index > -1) {
         this.selectedPairs.splice(index, 1);
@@ -122,26 +119,23 @@ export const useForexStore = defineStore('forex', {
       }
     },
 
-    selectAllPairs() {
+    selectAllPairs(): void {
       this.selectedPairs = Object.keys(this.lastTrades);
     },
 
-    clearSelection() {
+    clearSelection(): void {
       this.selectedPairs = [];
     },
 
-  
-    addToPortfolio(symbol: string, volume: number) {
+    addToPortfolio(symbol: string, volume: number): void {
       const currentTrade = this.lastTrades[symbol];
       if (!currentTrade) {
         throw new Error('Current price not available for this pair');
       }
 
-     
       const existingAssetIndex = this.portfolio.findIndex(asset => asset.symbol === symbol);
       
       if (existingAssetIndex > -1) {
-        
         const existingAsset = this.portfolio[existingAssetIndex];
         const totalVolume = existingAsset.volume + volume;
         const totalCost = (existingAsset.purchasePrice * existingAsset.volume) + (currentTrade.p * volume);
@@ -153,9 +147,8 @@ export const useForexStore = defineStore('forex', {
           purchasePrice: averagePrice
         };
       } else {
-        
         const newAsset: PortfolioAsset = {
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          id: Date.now().toString() + Math.random().toString(36).substring(2, 11),
           symbol,
           purchasePrice: currentTrade.p,
           volume,
@@ -165,15 +158,14 @@ export const useForexStore = defineStore('forex', {
       }
     },
 
-    removeFromPortfolio(assetId: string) {
+    removeFromPortfolio(assetId: string): void {
       const index = this.portfolio.findIndex(asset => asset.id === assetId);
       if (index > -1) {
         this.portfolio.splice(index, 1);
       }
     },
 
-  
-    exportPortfolioToCSV() {
+    exportPortfolioToCSV(): void {
       const portfolioData = this.portfolioWithCurrentPrices;
       const headers = ['Pair', 'Purchase Price', 'Current Price', 'Volume', 'Total Value', 'Profit/Loss', 'Profit/Loss %', 'Purchase Date'];
       
@@ -186,7 +178,7 @@ export const useForexStore = defineStore('forex', {
           asset.volume.toString(),
           asset.totalValue?.toFixed(2) || 'N/A',
           asset.profitLoss?.toFixed(2) || 'N/A',
-          asset.profitLossPercentage?.toFixed(3) + '%' || 'N/A',
+          (asset.profitLossPercentage?.toFixed(3) || 'N/A') + '%',
           asset.purchaseDate.toLocaleDateString()
         ].join(','))
       ].join('\n');
@@ -202,31 +194,45 @@ export const useForexStore = defineStore('forex', {
       document.body.removeChild(link);
     },
 
-   
-    setConnectionState(connected: boolean, error: string | null = null) {
+    setConnectionState(connected: boolean, error: string | null = null): void {
       this.isConnected = connected;
       this.connectionError = error;
     },
 
-   
-    clearTrades() {
+    clearTrades(): void {
       this.lastTrades = {};
       this.previousPrices = {};
     },
 
-    clearAll() {
+    clearAll(): void {
       this.clearTrades();
       this.portfolio = [];
       this.selectedPairs = [];
       this.isConnected = false;
       this.connectionError = null;
-    }
-  },
+    },
 
- 
-  persist: {
-    key: 'forex-portfolio',
-    storage: localStorage,
-    paths: ['portfolio'] 
+    savePortfolioToLocalStorage(): void {
+      try {
+        localStorage.setItem('forex-portfolio', JSON.stringify(this.portfolio));
+      } catch (error) {
+        console.error('Failed to save portfolio to localStorage:', error);
+      }
+    },
+
+    loadPortfolioFromLocalStorage(): void {
+      try {
+        const savedPortfolio = localStorage.getItem('forex-portfolio');
+        if (savedPortfolio) {
+          const parsed = JSON.parse(savedPortfolio);
+          this.portfolio = parsed.map((asset: any) => ({
+            ...asset,
+            purchaseDate: new Date(asset.purchaseDate)
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to load portfolio from localStorage:', error);
+      }
+    }
   }
 });

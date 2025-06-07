@@ -9,7 +9,7 @@ export function useForex() {
   const isConnecting = ref(false);
   const connectionError = ref<string | null>(null);
 
-  const connect = async () => {
+  const connect = async (): Promise<void> => {
     if (isConnecting.value || forexStore.isConnected) {
       return;
     }
@@ -34,7 +34,7 @@ export function useForex() {
     }
   };
 
-  const disconnect = () => {
+  const disconnect = (): void => {
     try {
       forexService.disconnect();
       forexStore.setConnectionState(false);
@@ -43,7 +43,7 @@ export function useForex() {
     }
   };
 
-  const checkConnection = () => {
+  const checkConnection = (): boolean => {
     const isConnected = forexService.isConnected();
     forexStore.setConnectionState(isConnected);
     return isConnected;
@@ -58,7 +58,7 @@ export function useForex() {
   });
 
   return {
-    isConnecting: isConnecting,
+    isConnecting,
     isConnected: computed(() => forexStore.isConnected),
     connectionError,
 
