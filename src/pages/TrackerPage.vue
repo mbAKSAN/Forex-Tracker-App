@@ -104,7 +104,7 @@ const stopWatching = watch(
       isLoading.value = false;
     }
 
-    newTrades.forEach((trade) => {
+    newTrades.forEach((trade: any) => {
       const symbol = formatSymbol(trade.s);
       const price = trade.p;
       const volume = trade.v;
