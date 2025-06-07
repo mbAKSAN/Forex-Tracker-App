@@ -1,7 +1,7 @@
 export class ForexService {
     private ws: WebSocket | null = null;
     private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    private readonly API_KEY = 'd1219c9r01qjtpe90ci0d1219c9r01qjtpe90cig';
+    private readonly API_KEY = 'd1225jpr01qjtpe90jo0d1225jpr01qjtpe90jog';
     private readonly MAJOR_PAIRS = [
         'OANDA:EUR_USD', 'OANDA:GBP_USD', 'OANDA:USD_JPY', 'OANDA:USD_CHF',
         'OANDA:USD_CAD', 'OANDA:AUD_USD', 'OANDA:NZD_USD', 'OANDA:EUR_GBP',
