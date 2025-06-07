@@ -202,7 +202,6 @@ const onCancelBuy = () => {
 
 const onConfirmBuy = async () => {
   for (const pair of selectedPairsData.value) {
-    console.log(selectedPairsData.value);
     const vol = volumes[pair.pair];
     if (vol > 0) {
       const oandaSymbol = `OANDA:${pair.pair.replace("/", "_")}`;
