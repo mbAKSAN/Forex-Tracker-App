@@ -1,20 +1,19 @@
 <template>
   <div class="my-assets-page">
-    <div class="header-section">
-      <h2 class="page-title">My Assets</h2>
-      <Button
-        label="Export CSV"
-        icon="pi pi-download"
-        class="export-btn"
-        @click="exportCSV"
-      />
-    </div>
+    <PageHeader title="My Assets">
+      <template #actions>
+        <BaseButton
+          label="Export CSV"
+          icon="pi pi-download"
+          variant="primary"
+          @click="exportCSV"
+        />
+      </template>
+    </PageHeader>
 
-    <DataTable
-      :value="portfolio"
+    <BaseDataTable
+      :data="portfolio"
       dataKey="id"
-      class="datatable-custom"
-      responsiveLayout="scroll"
       :emptyMessage="'No assets in your portfolio.'"
     >
       <Column field="symbol" header="Pair" sortable style="min-width: 8rem">
@@ -48,23 +47,25 @@
 
       <Column>
         <template #body="{ data }">
-          <Button
+          <BaseButton
             icon="pi pi-trash"
-            class="p-button-danger p-button-sm"
+            variant="danger"
+            size="sm"
             @click="removeAsset(data.id)"
           />
         </template>
       </Column>
-    </DataTable>
+    </BaseDataTable>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import DataTable from "primevue/datatable";
 import Column from "primevue/column";
-import Button from "primevue/button";
 import { useForexStore } from "@/stores/forexStore";
+import BaseDataTable from "@/components/molecules/BaseDataTable.vue";
+import BaseButton from "@/components/atoms/BaseButton.vue";
+import PageHeader from "@/components/organism/PageHeader.vue";
 
 const forexStore = useForexStore();
 const portfolio = computed(() => forexStore.portfolio);
@@ -107,94 +108,5 @@ const formatSymbol = (symbol: string) => {
 .my-assets-page {
   padding: 16px;
   box-sizing: border-box;
-}
-
-.header-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #333333;
-  margin: 0;
-}
-
-.export-btn {
-  background-color: #2563eb !important;
-  color: #ffffff !important;
-  border: none !important;
-  border-radius: 4px !important;
-  padding: 8px 16px !important;
-  font-size: 14px !important;
-  cursor: pointer !important;
-}
-
-.export-btn:hover {
-  background-color: #1e40af !important;
-}
-
-.datatable-custom {
-  width: 100%;
-  background-color: #ffffff;
-  border-radius: 4px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-:deep(.datatable-custom .p-datatable-thead > tr > th.p-sortable) {
-  background-color: #eef2ff !important;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  border-bottom: 1px solid #d1d5db !important;
-  color: #374151 !important;
-  font-weight: 600 !important;
-}
-
-:deep(.datatable-custom .p-datatable-tbody > tr:nth-child(even)) {
-  background-color: #fafafa !important;
-}
-
-:deep(.datatable-custom .p-datatable-tbody td) {
-  color: #59626ecc !important;
-  padding: 12px 16px !important;
-  font-size: 14px !important;
-}
-
-:deep(.datatable-custom .p-datatable-tbody .p-datatable-empty-message) {
-  text-align: center !important;
-  padding: 24px !important;
-  color: #6b7280 !important;
-  font-style: italic !important;
-}
-
-:deep(.datatable-custom .p-datatable-tbody td .p-button-danger) {
-  background-color: transparent !important;
-  border: none !important;
-  color: #b91c1c;
-}
-
-:deep(.datatable-custom .p-datatable-tbody td .p-button-danger:hover) {
-  background-color: #d1c2c22e !important;
-}
-
-:deep(.datatable-custom .p-datatable-tbody > tr:hover) {
-  background-color: #f3f4f6 !important;
-  cursor: pointer;
-}
-
-:deep(.datatable-custom .p-datatable-tbody > tr.p-highlight:hover) {
-  background-color: #e0e7ff !important;
-}
-:deep(.p-datatable-column-sorted) {
-  background-color: #0f8dda1a !important;
-  color: #1f76df !important;
-}
-:deep(.p-datatable-column-sorted .p-datatable-sort-icon) {
-  color: #1f76df !important;
 }
 </style>
