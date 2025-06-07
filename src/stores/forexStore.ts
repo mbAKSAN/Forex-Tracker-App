@@ -48,7 +48,6 @@ export const useForexStore = defineStore('forex', {
 
   
     selectedTradeList: (state) => {
-      console.log('TestForex',state)
       return state.selectedPairs
         .map(symbol => state.lastTrades[symbol])
         .filter(Boolean)

@@ -6,7 +6,7 @@ import MyAssetsPage from "@/pages/MyAssetsPage.vue";
 const routes: Array<RouteRecordRaw> = [
   {
     path: "/",
-    redirect: "/home",
+    redirect: "/tracker",
   },
   {
     path: "/tracker",
